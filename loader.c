@@ -156,6 +156,18 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
     return -1;   
   }
 
+    //Debug
+    size_t temp = PROV_SEGMENT4_OFFSET_MEM + 0x10000; // A la ghidra, for easy comparaison
+    printf("%x:", temp);
+    for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
+        if (i != 0 && i % 4 == 0) {
+         putchar('\n');
+         temp+=4;
+         printf("%x:", temp);
+        }
+        printf(" %2x", ((char *)p4)[i]);
+    }
+    putchar('\n');
 }
 
 // Arbitrary
