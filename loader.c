@@ -11,7 +11,7 @@
 	((x + QSEECOM_ALIGN_SIZE) & (~QSEECOM_ALIGN_MASK))
 
 // Arbitrary
-#define BASE_ADDR_TRUSTLET     ((void *)0x000000)
+#define BASE_ADDR_TRUSTLET     ((void *)0x00100000)
 
 // htc_drmprov : Read Execute
 #define PROV_SEGMENT1_SIZE   0x0370c
@@ -156,18 +156,25 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
     return -1;   
   }
 
-    //Debug
-    size_t temp = PROV_SEGMENT4_OFFSET_MEM + 0x10000; // A la ghidra, for easy comparaison
-    printf("%x:", temp);
-    for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
-        if (i != 0 && i % 4 == 0) {
-         putchar('\n');
-         temp+=4;
-         printf("%x:", temp);
-        }
-        printf(" %2x", ((char *)p4)[i]);
+  // temp is just used for debug printing
+  size_t temp = PROV_SEGMENT4_OFFSET_MEM;
+  size_t base_addr = BASE_ADDR_TRUSTLET;
+
+  for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
+
+    // FIXME: (Hardcoded) Symbols contained withing the trustlet
+    if (temp >= PROV_SEGMENT4_OFFSET_MEM + 0x70) {
+      // Patch address by adding trustlet base address
+      ((char *)p4)[i] += (base_addr >> (8 * (i % 4))) & 0x000000ff;
     }
-    putchar('\n');
+    // debug printing
+    if (i != 0 && i % 4 == 0) {
+      temp+=4;
+      printf("\n%x:", temp);
+    }
+      printf(" %2x", ((char *)p4)[i]);
+  }
+  putchar('\n');
 }
 
 // Arbitrary
