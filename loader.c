@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/fcntl.h>
-#include <sys/mman.h>
-#include <errno.h>
+#include "loader.h"
 
 // Not used for now
 #define QSEECOM_ALIGN_SIZE	0x40
