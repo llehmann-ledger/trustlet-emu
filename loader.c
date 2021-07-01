@@ -160,6 +160,7 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
   size_t temp = PROV_SEGMENT4_OFFSET_MEM;
   size_t base_addr = BASE_ADDR_TRUSTLET;
 
+  printf("\n%x:", temp);
   for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
 
     // FIXME: (Hardcoded) Symbols contained withing the trustlet
@@ -195,6 +196,7 @@ int map_cmnlib(const char* name) {
 int main(int argc, char *argv[]) {
 
   void* t_code;
+  // FIXME: Do new versions of QSEE/QTEE also have R9 pointing to data segment ?
   void* t_data;
 
   // TODO : Get name from argv
