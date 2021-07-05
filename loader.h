@@ -7,27 +7,23 @@
 #include <sys/mman.h>
 #include <errno.h>
 
-struct 
+struct Dyn_section
 {
   size_t size;
   void *mem;
-} dyn_section;
+};
 
-struct 
+struct Dyn_parser_helper
 {
-  struct dyn_section *dt_pltgot;
-  struct dyn_section *dt_hash;
-  struct dyn_section *dt_symtab;
-  struct dyn_section *dt_syment;
-  struct dyn_section *dt_jmprel;
-  struct dyn_section *dt_pltrelsz;
-  struct dyn_section *dt_rel;
-  struct dyn_section *dt_relsz;
-  struct dyn_section *dt_strtab;
-  struct dyn_section *dt_strsize;
-} dyn_parser_helper;
+  struct Dyn_section *dt_pltgot;
+  struct Dyn_section *dt_hash;
+  struct Dyn_section *dt_symtab;
+  struct Dyn_section *dt_jmprel;
+  struct Dyn_section *dt_rel;
+  struct Dyn_section *dt_strtab;
+};
 
-struct 
+struct Segment
 {
   void *mem;
   size_t size;
@@ -35,25 +31,25 @@ struct
   int perm;
   size_t offset_file;
   size_t offset_mem; // Useful ?
-} segment;
+};
 
-struct 
+struct Symbol
 {
   char *name;
   void *got;
   void *real_addr;
   int flags;
-  struct symbol *next;
-} symbol;
+  struct Symbol *next;
+};
 
-struct 
+struct Trustlet
 {
   char *name;
   int nb_segments; // Useful ?
-  struct segment *segments;
+  struct Segment *segments;
   size_t base_addr;
   int nb_symbols; // Useful ?
-  struct symbol *symbols;
-} trustlet;
+  struct Symbol *symbols;
+};
 
 #endif /* loader.h */

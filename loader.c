@@ -1,4 +1,5 @@
 #include "loader.h"
+#include "elf_helper.h"
 
 // Not used for now
 #define QSEECOM_ALIGN_SIZE	0x40
@@ -156,6 +157,7 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
   size_t temp = PROV_SEGMENT4_OFFSET_MEM;
   size_t base_addr = BASE_ADDR_TRUSTLET;
 
+  struct Dyn_parser_helper res = parse_dynamic(p5, base_addr);
   printf("\n%x:", temp);
   for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
 

@@ -26,6 +26,9 @@
 /* Standard ELF types.  */
 
 #include <stdint.h>
+#include <stddef.h>
+
+struct  Dyn_parser_helper parse_dynamic(void* mem, size_t base_addr);
 
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;
@@ -61,7 +64,7 @@ typedef uint16_t Elf64_Section;
 typedef Elf32_Half Elf32_Versym;
 typedef Elf64_Half Elf64_Versym;
 
-#ifdef 64BIT_SUPPORT
+#ifdef BIT64_SUPPORT
 typedef Elf64_Half Elf_Half;
 typedef Elf64_Word Elf_Word;
 typedef	Elf64_Sword  Elf_Sword;
@@ -80,7 +83,7 @@ typedef Elf32_Xword Elf_Xword;
 typedef	Elf32_Sxword  Elf_Sxword;
 typedef Elf32_Addr Elf_Addr;
 typedef Elf32_Off Elf_Off;
-typedef Elf64_Xoff Elf_Xoff;
+typedef Elf32_Xoff Elf_Xoff;
 typedef Elf32_Section Elf_Section;
 typedef Elf32_Versym Elf_Versym;
 #endif
@@ -371,7 +374,7 @@ typedef struct
 
 /* Symbol table entry.  */
 
-#ifdef 64BIT_SUPPORT
+#ifdef BIT64_SUPPORT
 typedef struct
 {
   Elf_Word	st_name;		/* Symbol name (string tbl index) */
@@ -496,7 +499,7 @@ typedef struct
 
 /* How to extract and insert information held in the r_info field.  */
 
-#ifdef 64BIT_SUPPORT
+#ifdef BIT64_SUPPORT
 #define ELF_R_SYM(i)			((i) >> 32)
 #define ELF_R_TYPE(i)			((i) & 0xffffffff)
 #define ELF_R_INFO(sym,type)		((((Elf_Xword) (sym)) << 32) + (type))
@@ -508,7 +511,7 @@ typedef struct
 
 /* Program segment header.  */
 
-#ifdef 64BIT_SUPPORT
+#ifdef BIT64_SUPPORT
 typedef struct
 {
   Elf_Word	p_type;			/* Segment type */
