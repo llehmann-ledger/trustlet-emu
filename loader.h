@@ -36,7 +36,7 @@ struct Segment
 struct Symbol
 {
   char *name;
-  void *got;
+  void *got_addr;
   void *real_addr;
   int flags;
   struct Symbol *next;

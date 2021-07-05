@@ -27,8 +27,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "loader.h"
 
-struct  Dyn_parser_helper parse_dynamic(void* mem, size_t base_addr);
+struct Dyn_parser_helper* parse_dynamic(void* mem, size_t base_addr);
+struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *dt_strtab, size_t base_addr);
 
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;

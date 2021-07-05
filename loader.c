@@ -157,7 +157,11 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
   size_t temp = PROV_SEGMENT4_OFFSET_MEM;
   size_t base_addr = BASE_ADDR_TRUSTLET;
 
-  struct Dyn_parser_helper res = parse_dynamic(p5, base_addr);
+  printf("\nDEBUG: dynamic parsing step:\n\n");
+  struct Dyn_parser_helper *res = parse_dynamic(p5, base_addr);
+  printf("\nDEBUG: symbols parsing step:\n\n");
+  struct Symbol *sym_list = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
+
   printf("\n%x:", temp);
   for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
 
