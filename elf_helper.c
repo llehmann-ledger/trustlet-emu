@@ -100,7 +100,6 @@ struct Dyn_parser_helper* parse_dynamic(void* mem, size_t base_addr) {
 
 struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *dt_strtab, size_t base_addr) {
   struct Symbol *first = calloc(sizeof(struct Symbol), 1);
-
   struct Symbol *curr_symbol = first;  
   // First symbol always null ?
   Elf_Sym *curr_elf = ((Elf_Sym *) dt_symtab->mem) + 1;
@@ -144,4 +143,12 @@ struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *
   }
 
   return first;
+}
+
+void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, size_t base_add) {
+  //TODO
+}
+
+void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, size_t base_add) {
+  //TODO
 }

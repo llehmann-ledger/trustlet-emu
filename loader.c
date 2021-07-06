@@ -159,9 +159,16 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
 
   printf("\nDEBUG: dynamic parsing step:\n\n");
   struct Dyn_parser_helper *res = parse_dynamic(p5, base_addr);
+  
   printf("\nDEBUG: symbols parsing step:\n\n");
   struct Symbol *sym_list = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
-
+  
+  printf("\nDEBUG: parsing DT_REL step:\n\n");
+  parse_rel(sym_list,  res->dt_rel, base_addr);
+  
+  printf("\nDEBUG: parsing DT_JMPREL step:\n\n");
+  parse_jmprel(sym_list,  res->dt_jmprel, base_addr);
+  
   printf("\n%x:", temp);
   for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
 
