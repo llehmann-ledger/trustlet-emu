@@ -1,6 +1,129 @@
 #include "elf_helper.h"
 #include <string.h>
 
+void map_segments(struct Segment *segment_list, int fd) {
+  struct Segment *curr = segment_list;
+
+  int prot = PROT_READ | PROT_WRITE;
+  int flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
+  while (curr) {
+    if (curr->perm & PF_X)
+     prot |= PROT_EXEC;
+
+    curr->mem = mmap(curr->offset_mem + BASE_ADDR_TRUSTLET, curr->size, prot, flags, -1, 0);
+    if (curr->mem == MAP_FAILED)
+      perror("Error in mmap segment");
+
+    int lseek_result = lseek(fd, curr->offset_file, SEEK_SET);
+    if (lseek_result != curr->offset_file)
+      perror("Error in lseek segment");
+
+    int read_result = read(fd, curr->mem, curr->size);
+    if (read_result != curr->size)
+      perror("Error read segment");
+
+    if (curr->perm & PF_X) {
+      int mprotect_result = mprotect(curr->mem, curr->size, prot & ~PROT_EXEC);
+      if (mprotect_result == -1) 
+        perror("Error mprotect segment");
+    }
+    curr = curr->next;
+  }
+}
+
+struct Trustlet* parse_elf(char* name) {
+  int fd = open(name, O_RDONLY);
+  struct stat st;
+
+  if (fd == -1)
+    perror("Error in open");
+
+  if (fstat(fd,&st) < 0)
+    perror("Error in fstat");
+
+  void *elf_header = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd, 0);
+  struct Trustlet *t_let = calloc(sizeof(struct Trustlet), 1);
+  
+  // Is that really useful ?
+  t_let->name = malloc(strlen(name));
+  strcpy(t_let->name, name);
+
+  t_let->symbols = calloc(sizeof(struct Symbol), 1);
+  t_let->base_addr = BASE_ADDR_TRUSTLET;
+
+  Elf_Ehdr *eh = (Elf_Ehdr *) elf_header;
+  if (!strncmp(eh->e_ident, ELFMAG, SELFMAG)) {
+    printf("File is a valid ELF !\n\n");
+  } else {
+    printf("Invalid file : not an ELF file\n");
+    exit(-1);
+  }
+	switch(eh->e_ident[EI_CLASS])
+	{
+		case ELFCLASS32:
+#ifdef BIT64_SUPPORT
+      printf("Trustlet-emu is compiled for 64 bit support only !\n");
+      exit(-1);
+#endif
+			break;
+		case ELFCLASS64:
+#ifndef BIT64_SUPPORT
+      printf("Trustlet-emu is compiled for 32 bit support only !\n");
+      exit(-1);
+#endif
+			break;
+		default:
+			printf("Invalid Class\n");
+      exit(-1);
+			break;
+	}
+
+  if (eh->e_machine != EM_ARM) {
+    printf("Are you seriously trying to load an ELF not compiled for ARM ? GTFO\n");
+    exit(-1);
+  }
+
+  t_let->segments = calloc(sizeof(struct Segment), 1);
+  struct Segment *curr_segment = t_let->segments;  
+  Elf_Phdr *e_phdr = (Elf_Phdr* )(elf_header + eh->e_phoff);
+  
+  t_let->segments->offset_mem = e_phdr[0].p_vaddr; // Physical address needed ?
+  printf("Offset mem : 0x%x\n", t_let->segments->offset_mem);
+  t_let->segments->offset_file = e_phdr[0].p_offset;
+  printf("Offset file : 0x%x\n", t_let->segments->offset_file);
+  t_let->segments->size =  e_phdr[0].p_filesz;
+  printf("File size : 0x%x\n", t_let->segments->size);
+  t_let->segments->type =  e_phdr[0].p_type;
+  printf("Type : %d\n", t_let->segments->type);
+  t_let->segments->perm =  e_phdr[0].p_flags;
+  printf("Flags (perm) : %d\n", t_let->segments->perm);
+
+  for (int i = 1; i < eh->e_phnum; i++) {
+    struct Segment *temp = calloc(sizeof(struct Segment), 1);
+    temp->offset_mem = e_phdr[i].p_vaddr; // Physical address needed ?
+    printf("Offset mem : 0x%x\n", temp->offset_mem);
+    temp->offset_file = e_phdr[i].p_offset;
+    printf("Offset file : 0x%x\n", temp->offset_file);
+    temp->size =  e_phdr[i].p_filesz;
+    printf("File size : 0x%x\n", temp->size);
+    temp->type =  e_phdr[i].p_type;
+    printf("Type : %d\n", temp->type);
+    temp->perm =  e_phdr[i].p_flags;
+    printf("Flags (perm) : %d\n", temp->perm);
+
+    if (temp->type != PT_NULL) {
+      curr_segment->next = temp;
+      curr_segment = temp;
+    }
+  }
+  curr_segment->next = NULL;
+  map_segments(t_let->segments, fd);
+
+  close(fd);
+  return t_let;
+}
+
+
 void init_dynparser(struct Dyn_parser_helper *dyn_p) {
   dyn_p->dt_pltgot = calloc(sizeof(struct Dyn_section), 1);
   dyn_p->dt_hash = calloc(sizeof(struct Dyn_section), 1);

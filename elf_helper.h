@@ -33,6 +33,7 @@ struct Dyn_parser_helper* parse_dynamic(void* mem, size_t base_addr);
 struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *dt_strtab, size_t base_addr);
 void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, size_t base_addr);
 void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, size_t base_addr);
+struct Trustlet* parse_elf(char* name);
 
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;

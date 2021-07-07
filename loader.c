@@ -1,164 +1,29 @@
 #include "loader.h"
 #include "elf_helper.h"
+#include <stdbool.h>
 
-// Not used for now
-#define QSEECOM_ALIGN_SIZE	0x40
-#define QSEECOM_ALIGN_MASK	(QSEECOM_ALIGN_SIZE - 1)
-#define QSEECOM_ALIGN(x)	\
-	((x + QSEECOM_ALIGN_SIZE) & (~QSEECOM_ALIGN_MASK))
+int map_trustlet(struct Trustlet *t_let) {
 
-// Arbitrary
-#define BASE_ADDR_TRUSTLET     ((void *)0x00100000)
-
-// htc_drmprov : Read Execute
-#define PROV_SEGMENT1_SIZE   0x0370c
-#define PROV_SEGMENT1_OFFSET_FILE 0x003000
-#define PROV_SEGMENT1_OFFSET_MEM BASE_ADDR_TRUSTLET + 0x0000000
-#define PROV_SEGMENT1_OFFSET_ENTRY_POINT PROV_SEGMENT1_OFFSET_MEM + 0x1954
-
-// htc_drmprov : Read Write
-#define PROV_SEGMENT2_SIZE   0x00075
-#define PROV_SEGMENT2_OFFSET_FILE 0x00670c
-#define PROV_SEGMENT2_OFFSET_MEM BASE_ADDR_TRUSTLET + 0x00004000
-
-// htc_drmprov : Read Write
-#define PROV_SEGMENT3_SIZE   0x00808
-#define PROV_SEGMENT3_OFFSET_FILE 0x006788
-#define PROV_SEGMENT3_OFFSET_MEM BASE_ADDR_TRUSTLET + 0x00005000
-
-// htc_drmprov : Read Write
-#define PROV_SEGMENT4_SIZE   0x0010c
-#define PROV_SEGMENT4_OFFSET_FILE 0x006f90
-#define PROV_SEGMENT4_OFFSET_MEM BASE_ADDR_TRUSTLET + 0x00006000
-
-// htc_drmprov : Read Write
-#define PROV_SEGMENT5_SIZE   0x01083
-#define PROV_SEGMENT5_OFFSET_FILE 0x00709c
-#define PROV_SEGMENT5_OFFSET_MEM BASE_ADDR_TRUSTLET + 0x00007000
-
-/*
-** TODO: Not hardcode address, size, etc
-**       Detect 32/64 bits
-**       Apply relocs correctly
-*/
-int map_trustlet(const char* name, void* t_code, void* t_data) {
-
-  int fd_t = open(name, O_RDONLY);
+  struct Segment *dyn_seg = t_let->segments;
+  bool stop = false;
+  // Find dynamic segment
+  while (dyn_seg && !stop) {
+    if (dyn_seg->type == PT_DYNAMIC) {
+      stop = true;
+    } else {
+      dyn_seg = dyn_seg->next;
+    }
+  }
   
-  if (fd_t == -1) {
-    printf("fail open(\"%s\")", name);
-    return -1;
+  if (!dyn_seg) {
+    printf("No dynamic segment. Stopping.\n");
+    exit -1;
   }
 
-  // Segment 1
-  int flags = MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS;
-  int prot = PROT_READ | PROT_EXEC | PROT_WRITE;
-  t_code = mmap(PROV_SEGMENT1_OFFSET_MEM, PROV_SEGMENT1_SIZE, prot, flags, -1, 0);
-  if (t_code == MAP_FAILED) {
-    printf("Error mapping PROV_SEGMENT1 : %s",  strerror(errno));
-    return -1;
-  }
-
-  int lseek_result = lseek(fd_t, PROV_SEGMENT1_OFFSET_FILE, SEEK_SET);
-  if (lseek_result != PROV_SEGMENT1_OFFSET_FILE) {
-    printf("Error lseek PROV_SEGMENT1 : %s, offset : %d",  strerror(errno), lseek_result);
-    return -1;   
-  }
-
-  int read_result = read(fd_t, t_code, PROV_SEGMENT1_SIZE);
-  if (read_result != PROV_SEGMENT1_SIZE) {
-    printf("Error read PROV_SEGMENT1 : %s, offset : %d",  strerror(errno), read_result);
-    return -1;   
-  }
-
-  int mprotect_result = mprotect(t_code, PROV_SEGMENT1_SIZE, PROT_READ | PROT_EXEC);
-  if (mprotect_result == -1) {
-    printf("Error mprotect PROV_SEGMENT1 : %s",  strerror(errno));
-    return -1;   
-  }
-
-  // Segment 2
-  prot = PROT_READ | PROT_WRITE;
-  t_data = mmap(PROV_SEGMENT2_OFFSET_MEM, PROV_SEGMENT2_SIZE, prot, flags, -1, 0);
-  if (t_data == MAP_FAILED) {
-    printf("Error mapping PROV_SEGMENT2 : %s",  strerror(errno));
-    return -1;
-  }
-
-  lseek_result = lseek(fd_t, PROV_SEGMENT2_OFFSET_FILE, SEEK_SET);
-  if (lseek_result != PROV_SEGMENT2_OFFSET_FILE) {
-    printf("Error lseek PROV_SEGMENT2 : %s, offset : %d",  strerror(errno), lseek_result);
-    return -1;   
-  }
-
-  read_result = read(fd_t, t_data, PROV_SEGMENT2_SIZE);
-  if (read_result != PROV_SEGMENT2_SIZE) {
-    printf("Error read PROV_SEGMENT2 : %s, offset : %d",  strerror(errno), read_result);
-    return -1;   
-  }
-
-  // Segment 3
-  void *p3 = mmap(PROV_SEGMENT3_OFFSET_MEM, PROV_SEGMENT3_SIZE, prot, flags, -1, 0);
-  if (p3 == MAP_FAILED) {
-    printf("Error mapping PROV_SEGMENT3 : %s",  strerror(errno));
-    return -1;
-  }
-
-  lseek_result = lseek(fd_t, PROV_SEGMENT3_OFFSET_FILE, SEEK_SET);
-  if (lseek_result != PROV_SEGMENT3_OFFSET_FILE) {
-    printf("Error lseek PROV_SEGMENT3 : %s, offset : %d",  strerror(errno), lseek_result);
-    return -1;   
-  }
-
-  read_result = read(fd_t, p3, PROV_SEGMENT3_SIZE);
-  if (read_result != PROV_SEGMENT3_SIZE) {
-    printf("Error read PROV_SEGMENT3 : %s, offset : %d",  strerror(errno), read_result);
-    return -1;   
-  }
-  // Segment 4
-  void *p4 = mmap(PROV_SEGMENT4_OFFSET_MEM, PROV_SEGMENT4_SIZE, prot, flags, -1, 0);
-  if (p4 == MAP_FAILED) {
-    printf("Error mapping PROV_SEGMENT4 : %s",  strerror(errno));
-    return -1;
-  }
-
-  lseek_result = lseek(fd_t, PROV_SEGMENT4_OFFSET_FILE, SEEK_SET);
-  if (lseek_result != PROV_SEGMENT4_OFFSET_FILE) {
-    printf("Error lseek PROV_SEGMENT4 : %s, offset : %d",  strerror(errno), lseek_result);
-    return -1;   
-  }
-
-  read_result = read(fd_t, p4, PROV_SEGMENT4_SIZE);
-  if (read_result != PROV_SEGMENT4_SIZE) {
-    printf("Error read PROV_SEGMENT4 : %s, offset : %d",  strerror(errno), read_result);
-    return -1;   
-  }
-
-  // Segment 5
-  void *p5 = mmap(PROV_SEGMENT5_OFFSET_MEM, PROV_SEGMENT5_SIZE, prot, flags, -1, 0);
-  if (p5 == MAP_FAILED) {
-    printf("Error mapping PROV_SEGMENT5 : %s",  strerror(errno));
-    return -1;
-  }
-
-  lseek_result = lseek(fd_t, PROV_SEGMENT5_OFFSET_FILE, SEEK_SET);
-  if (lseek_result != PROV_SEGMENT5_OFFSET_FILE) {
-    printf("Error lseek PROV_SEGMENT5 : %s, offset : %d",  strerror(errno), lseek_result);
-    return -1;   
-  }
-
-  read_result = read(fd_t, p5, PROV_SEGMENT5_SIZE);
-  if (read_result != PROV_SEGMENT5_SIZE) {
-    printf("Error read PROV_SEGMENT5 : %s, offset : %d",  strerror(errno), read_result);
-    return -1;   
-  }
-
-  // temp is just used for debug printing
-  size_t temp = PROV_SEGMENT4_OFFSET_MEM;
   size_t base_addr = BASE_ADDR_TRUSTLET;
 
   printf("\nDEBUG: dynamic parsing step:\n\n");
-  struct Dyn_parser_helper *res = parse_dynamic(p5, base_addr);
+  struct Dyn_parser_helper *res = parse_dynamic(dyn_seg->mem, base_addr);
   
   printf("\nDEBUG: symbols parsing step:\n\n");
   struct Symbol *sym_list = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
@@ -170,15 +35,8 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
   parse_jmprel(sym_list, res->dt_jmprel, base_addr);
 
   printf("\n~ THAT'S ALL FOLKS ~\n");
+
 }
-
-// Arbitrary
-#define BASE_ADDR_CMNLIB     ((void *)0x000000)
-
-// cmnlib : Read execute ?
-#define CMNLIB_SEGMENT1_SIZE   0x54000 // ?
-#define CMNLIB_SEGMENT1_OFFSET_FILE 0x003000
-#define CMNLIB_SEGMENT1_OFFSET_MEM BASE_ADDR_CMNLIB + 0x00007000
 
 /*
 ** TODO
@@ -189,27 +47,45 @@ int map_cmnlib(const char* name) {
 
 int main(int argc, char *argv[]) {
 
-  void* t_code;
-  // FIXME: Do new versions of QSEE/QTEE also have R9 pointing to data segment ?
-  void* t_data;
-
+  if (argc < 2) {
+    printf("usage: trustlet_path\n");
+    return 0;
+  }
   // TODO : Get name from argv
-  map_trustlet("htc_drmprov", t_code, t_data);
+  struct Trustlet *t_let = parse_elf(argv[1]);
+  // TODO : Get name fromconst char* name, void* t_code, void* t_data argv
+  map_trustlet(t_let);
 
   // TODO : map_cmnlib
 
   // Seek to entry point
-  // FIXME : move it to map_trustlet ?
-  t_code = t_code + (size_t) PROV_SEGMENT1_OFFSET_ENTRY_POINT;
+  struct Segment *code_seg = t_let->segments;
+  bool stop = false;
+  // Find dynamic segment
+  int i = 0;
+  while (code_seg && !stop) {
+    if (code_seg->type == PT_LOAD && (code_seg->perm & (PF_X))) {
+      stop = true;
+    } else {
+      code_seg = code_seg->next;
+    }
+    i++;
+  }
+
+  if (!code_seg) {
+    printf("No code segment. Stopping.\n");
+    return -1;
+  }
+  code_seg->mem += ENTRY_POINT;
 
   void (*f)(unsigned long *);
-  f = (void *)((unsigned long)t_code | 1);
+  f = (void *)((unsigned long)code_seg->mem | 1);
   asm volatile(
                "mov r9, %0\n"
                "blx  %1\n"
                "bkpt\n"
                :
-               : "r"(t_data), "r"(f)
+               : "r"(code_seg->mem), "r"(f)
                : "r9");
 
  return 0;

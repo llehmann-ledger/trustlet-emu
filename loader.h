@@ -7,6 +7,13 @@
 #include <sys/mman.h>
 #include <errno.h>
 
+// Arbitrary, could be anything code will still works
+#define BASE_ADDR_TRUSTLET     ((void *)0x00100000)
+
+// The only remaining thing hardcoded :(
+// Because CElf_invoke() is not part of the ELF symbols...
+#define ENTRY_POINT 0x1954
+
 struct Dyn_section
 {
   size_t size;
@@ -31,6 +38,7 @@ struct Segment
   int perm;
   size_t offset_file;
   size_t offset_mem; // Useful ?
+  struct Segment *next;
 };
 
 struct Symbol
@@ -45,10 +53,8 @@ struct Symbol
 struct Trustlet
 {
   char *name;
-  int nb_segments; // Useful ?
   struct Segment *segments;
   size_t base_addr;
-  int nb_symbols; // Useful ?
   struct Symbol *symbols;
 };
 
