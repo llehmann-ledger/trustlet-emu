@@ -164,27 +164,11 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
   struct Symbol *sym_list = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
   
   printf("\nDEBUG: parsing DT_REL step:\n\n");
-  parse_rel(sym_list,  res->dt_rel, base_addr);
+  parse_rel(sym_list, res->dt_rel, res->dt_strtab, base_addr);
   
   printf("\nDEBUG: parsing DT_JMPREL step:\n\n");
-  parse_jmprel(sym_list,  res->dt_jmprel, base_addr);
-  
-  printf("\n%x:", temp);
-  for (int i = 0; i < PROV_SEGMENT4_SIZE; i ++) {
+  //parse_jmprel(sym_list, res->dt_jmprel, res->dt_strtab, base_addr);
 
-    // FIXME: (Hardcoded) Symbols contained withing the trustlet
-    if (temp >= PROV_SEGMENT4_OFFSET_MEM + 0x70) {
-      // Patch address by adding trustlet base address
-      ((char *)p4)[i] += (base_addr >> (8 * (i % 4))) & 0x000000ff;
-    }
-    // debug printing
-    if (i != 0 && i % 4 == 0) {
-      temp+=4;
-      printf("\n%x:", temp);
-    }
-      printf(" %2x", ((char *)p4)[i]);
-  }
-  putchar('\n');
 }
 
 // Arbitrary

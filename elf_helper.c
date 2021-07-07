@@ -141,14 +141,81 @@ struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *
 
     curr_elf+=1; 
   }
-
+  curr_symbol->next = NULL;
   return first;
 }
 
-void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, size_t base_add) {
-  //TODO
+//TODO : Refactoring into one single function
+struct Symbol* find_symbol_from_real_addr(struct Symbol *sym_list, void* s_addr, size_t base_addr) {
+  struct Symbol *res = sym_list;
+  while (res->next != NULL) {
+    if(res->real_addr == s_addr + base_addr)
+      return res;
+    res = res->next;
+  }
+  return NULL;
 }
 
-void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, size_t base_add) {
+//TODO : Refactoring into one single function
+struct Symbol* find_symbol_from_name(struct Symbol *sym_list, char* name, size_t base_addr) {
+  struct Symbol *res = sym_list;
+  while (res->next != NULL) {
+    if(strcmp(res->name, name) == 0)
+      return res;
+    res = res->next;
+  }
+  return NULL;
+}
+
+//TODO : Refactoring into one single function
+struct Symbol* find_symbol_from_index(struct Symbol *sym_list, int index, size_t base_addr) {
+  struct Symbol *res = sym_list;
+  int cpt = 1;
+  while (res->next != NULL) {
+    if(cpt == index)
+      return res;
+    res = res->next;
+    cpt++;
+  }
+  return NULL;
+}
+
+void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, struct Dyn_section *dt_strtab, size_t base_addr) {
+  Elf_Rel *curr = (Elf_Rel *) dt_rel->mem;
+
+  while (curr < dt_rel->mem + dt_rel->size) {
+    Elf_Addr *addr_reloc = curr->r_offset + base_addr;
+    if (ELF_R_SYM(curr->r_info) == 0) {
+      struct Symbol *symbol_reloc = find_symbol_from_real_addr(sym_list, *addr_reloc, base_addr);
+
+      if (symbol_reloc != NULL) {
+        printf("Symbol found : %s\n", symbol_reloc->name);
+        printf("Symbol GOT address : %p\n", addr_reloc);
+        symbol_reloc->got_addr = addr_reloc;
+        *addr_reloc += base_addr;
+      } else {
+        printf("/!\\ Symbol not found at : %p, which came from : %p\n", *addr_reloc, addr_reloc);
+        //FIXME : Needs to add a is_mmaped(addr)
+        //
+        //        if is_mmaped(addr) is TRUE
+        //           Addr += Base Addr
+        //   
+        //        else if addr is (nil)
+        //           Stays (nil) ?  
+        //        else
+        //           ERR SHOULD NOT HAPPENS
+      }
+    } else {
+      struct Symbol *symbol_reloc = find_symbol_from_index(sym_list, ELF_R_SYM(curr->r_info), base_addr);
+      printf("Symbol found : %s\n", symbol_reloc->name);
+      printf("Symbol GOT address : %p\n", addr_reloc);
+      symbol_reloc->got_addr = addr_reloc;
+      *addr_reloc += base_addr;
+    }
+    curr+=1;
+  }
+}
+
+void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, struct Dyn_section *dt_strtab, size_t base_addr) {
   //TODO
 }
