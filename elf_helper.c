@@ -148,39 +148,32 @@ struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *
 //TODO : Refactoring into one single function
 struct Symbol* find_symbol_from_real_addr(struct Symbol *sym_list, void* s_addr, size_t base_addr) {
   struct Symbol *res = sym_list;
-  while (res->next != NULL) {
+  while (res) {
     if(res->real_addr == s_addr + base_addr)
       return res;
-    res = res->next;
+    else if (res->next != NULL)
+      res = res->next;
+    else
+      return NULL;
   }
-  return NULL;
-}
-
-//TODO : Refactoring into one single function
-struct Symbol* find_symbol_from_name(struct Symbol *sym_list, char* name, size_t base_addr) {
-  struct Symbol *res = sym_list;
-  while (res->next != NULL) {
-    if(strcmp(res->name, name) == 0)
-      return res;
-    res = res->next;
-  }
-  return NULL;
 }
 
 //TODO : Refactoring into one single function
 struct Symbol* find_symbol_from_index(struct Symbol *sym_list, int index, size_t base_addr) {
   struct Symbol *res = sym_list;
   int cpt = 1;
-  while (res->next != NULL) {
+  while (res) {
     if(cpt == index)
       return res;
-    res = res->next;
+    else if (res->next != NULL)
+      res = res->next;
+    else
+      return NULL;
     cpt++;
   }
-  return NULL;
 }
 
-void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, struct Dyn_section *dt_strtab, size_t base_addr) {
+void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, size_t base_addr) {
   Elf_Rel *curr = (Elf_Rel *) dt_rel->mem;
 
   while (curr < dt_rel->mem + dt_rel->size) {
@@ -216,6 +209,18 @@ void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, struct Dyn_s
   }
 }
 
-void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, struct Dyn_section *dt_strtab, size_t base_addr) {
-  //TODO
+void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, size_t base_addr) {
+  Elf_Rel *curr = (Elf_Rel *) dt_jmprel->mem;
+  while (curr < dt_jmprel->mem + dt_jmprel->size) {
+    Elf_Addr *addr_reloc = curr->r_offset + base_addr;
+    struct Symbol *symbol_reloc = find_symbol_from_index(sym_list, ELF_R_SYM(curr->r_info), base_addr);
+    if (symbol_reloc != NULL) {
+      printf("Symbol found : %s\n", symbol_reloc->name);
+      printf("Symbol GOT address : %p\n", addr_reloc);
+      symbol_reloc->got_addr = addr_reloc;
+    } else {
+      printf("Error, we shouldn't get here, we're coming from : %p\n", addr_reloc);
+    }
+    curr+=1;
+  }
 }

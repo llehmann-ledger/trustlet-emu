@@ -164,11 +164,12 @@ int map_trustlet(const char* name, void* t_code, void* t_data) {
   struct Symbol *sym_list = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
   
   printf("\nDEBUG: parsing DT_REL step:\n\n");
-  parse_rel(sym_list, res->dt_rel, res->dt_strtab, base_addr);
+  parse_rel(sym_list, res->dt_rel, base_addr);
   
   printf("\nDEBUG: parsing DT_JMPREL step:\n\n");
-  //parse_jmprel(sym_list, res->dt_jmprel, res->dt_strtab, base_addr);
+  parse_jmprel(sym_list, res->dt_jmprel, base_addr);
 
+  printf("\n~ THAT'S ALL FOLKS ~\n");
 }
 
 // Arbitrary
