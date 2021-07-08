@@ -54,7 +54,7 @@ struct Trustlet* parse_elf(char* name) {
     exit(-1);
   }
 
-  void *elf_header = mmap(NULL, 1, PROT_READ, MAP_PRIVATE, fd, 0);
+  void *elf_header = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (elf_header == MAP_FAILED) {
       perror("Error in mmap ELF file");
       exit(-1);
