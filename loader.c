@@ -15,9 +15,9 @@ int map_trustlet(struct Trustlet *t_let) {
     }
   }
   
-  if (!dyn_seg) {
+  if (dyn_seg == NULL) {
     printf("No dynamic segment. Stopping.\n");
-    exit -1;
+    exit(-1);
   }
 
   size_t base_addr = BASE_ADDR_TRUSTLET;
@@ -26,13 +26,13 @@ int map_trustlet(struct Trustlet *t_let) {
   struct Dyn_parser_helper *res = parse_dynamic(dyn_seg->mem, base_addr);
   
   printf("\nDEBUG: symbols parsing step:\n\n");
-  struct Symbol *sym_list = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
+  t_let->symbols = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
   
   printf("\nDEBUG: parsing DT_REL step:\n\n");
-  parse_rel(sym_list, res->dt_rel, base_addr);
+  parse_rel(t_let->symbols, res->dt_rel, base_addr);
   
   printf("\nDEBUG: parsing DT_JMPREL step:\n\n");
-  parse_jmprel(sym_list, res->dt_jmprel, base_addr);
+  parse_jmprel(t_let->symbols, res->dt_jmprel, base_addr);
 
   printf("\n~ THAT'S ALL FOLKS ~\n");
 
@@ -62,30 +62,31 @@ int main(int argc, char *argv[]) {
   struct Segment *code_seg = t_let->segments;
   bool stop = false;
   // Find dynamic segment
-  int i = 0;
   while (code_seg && !stop) {
     if (code_seg->type == PT_LOAD && (code_seg->perm & (PF_X))) {
       stop = true;
     } else {
       code_seg = code_seg->next;
     }
-    i++;
   }
 
   if (!code_seg) {
     printf("No code segment. Stopping.\n");
     return -1;
   }
-  code_seg->mem += ENTRY_POINT;
 
-  void (*f)(unsigned long *);
-  f = (void *)((unsigned long)code_seg->mem | 1);
+  struct Symbol *entry_point = find_symbol_from_name(t_let->symbols, "CElfFile_invoke");
+  if (!entry_point) {
+    printf("Entry point not found\n");
+    return -1;    
+  }
+
   asm volatile(
                "mov r9, %0\n"
                "blx  %1\n"
                "bkpt\n"
                :
-               : "r"(code_seg->mem), "r"(f)
+               : "r"(code_seg->mem), "r"(entry_point->real_addr)
                : "r9");
 
  return 0;

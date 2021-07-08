@@ -11,21 +11,29 @@ void map_segments(struct Segment *segment_list, int fd) {
      prot |= PROT_EXEC;
 
     curr->mem = mmap(curr->offset_mem + BASE_ADDR_TRUSTLET, curr->size, prot, flags, -1, 0);
-    if (curr->mem == MAP_FAILED)
+    if (curr->mem == MAP_FAILED) {
       perror("Error in mmap segment");
+      exit(-1);
+    }
 
     int lseek_result = lseek(fd, curr->offset_file, SEEK_SET);
-    if (lseek_result != curr->offset_file)
+    if (lseek_result != curr->offset_file) {
       perror("Error in lseek segment");
+      exit(-1);
+    }
 
     int read_result = read(fd, curr->mem, curr->size);
-    if (read_result != curr->size)
+    if (read_result != curr->size) {
       perror("Error read segment");
+      exit(-1);
+    }
 
     if (curr->perm & PF_X) {
       int mprotect_result = mprotect(curr->mem, curr->size, prot & ~PROT_EXEC);
-      if (mprotect_result == -1) 
+      if (mprotect_result == -1) {
         perror("Error mprotect segment");
+        exit(-1);
+      }
     }
     curr = curr->next;
   }
@@ -35,20 +43,29 @@ struct Trustlet* parse_elf(char* name) {
   int fd = open(name, O_RDONLY);
   struct stat st;
 
-  if (fd == -1)
+  if (fd == -1) {
     perror("Error in open");
+    exit(-1);
+  }
 
-  if (fstat(fd,&st) < 0)
+
+  if (fstat(fd,&st) < 0) {
     perror("Error in fstat");
+    exit(-1);
+  }
 
-  void *elf_header = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd, 0);
+  void *elf_header = mmap(NULL, 1, PROT_READ, MAP_PRIVATE, fd, 0);
+  if (elf_header == MAP_FAILED) {
+      perror("Error in mmap ELF file");
+      exit(-1);
+  }
   struct Trustlet *t_let = calloc(sizeof(struct Trustlet), 1);
   
   // Is that really useful ?
   t_let->name = malloc(strlen(name));
   strcpy(t_let->name, name);
 
-  t_let->symbols = calloc(sizeof(struct Symbol), 1);
+  t_let->symbols = NULL;
   t_let->base_addr = BASE_ADDR_TRUSTLET;
 
   Elf_Ehdr *eh = (Elf_Ehdr *) elf_header;
@@ -273,6 +290,19 @@ struct Symbol* find_symbol_from_real_addr(struct Symbol *sym_list, void* s_addr,
   struct Symbol *res = sym_list;
   while (res) {
     if(res->real_addr == s_addr + base_addr)
+      return res;
+    else if (res->next != NULL)
+      res = res->next;
+    else
+      return NULL;
+  }
+}
+
+//TODO : Refactoring into one single function
+struct Symbol* find_symbol_from_name(struct Symbol *sym_list, const char* name) {
+  struct Symbol *res = sym_list;
+  while (res) {
+    if(strcmp(res->name, name) == 0)
       return res;
     else if (res->next != NULL)
       res = res->next;
