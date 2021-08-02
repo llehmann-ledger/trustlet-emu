@@ -1,7 +1,7 @@
 #include "elf_helper.h"
 #include <string.h>
 
-void map_segments(struct Segment *segment_list, int fd) {
+void map_segments(struct Segment *segment_list, int fd, size_t base_addr) {
   struct Segment *curr = segment_list;
 
   int prot = PROT_READ | PROT_WRITE;
@@ -10,7 +10,7 @@ void map_segments(struct Segment *segment_list, int fd) {
     if (curr->perm & PF_X)
      prot |= PROT_EXEC;
 
-    curr->mem = mmap(curr->offset_mem + BASE_ADDR_TRUSTLET, curr->size, prot, flags, -1, 0);
+    curr->mem = mmap(curr->offset_mem + base_addr, curr->size, prot, flags, -1, 0);
     if (curr->mem == MAP_FAILED) {
       perror("Error in mmap segment");
       exit(-1);
@@ -39,8 +39,8 @@ void map_segments(struct Segment *segment_list, int fd) {
   }
 }
 
-struct Trustlet* parse_elf(char* name) {
-  int fd = open(name, O_RDONLY);
+struct Trustlet* parse_elf(char* path, size_t base_addr) {
+  int fd = open(path, O_RDONLY);
   struct stat st;
 
   if (fd == -1) {
@@ -60,13 +60,9 @@ struct Trustlet* parse_elf(char* name) {
       exit(-1);
   }
   struct Trustlet *t_let = calloc(sizeof(struct Trustlet), 1);
-  
-  // Is that really useful ?
-  t_let->name = malloc(strlen(name));
-  strcpy(t_let->name, name);
 
   t_let->symbols = NULL;
-  t_let->base_addr = BASE_ADDR_TRUSTLET;
+  t_let->base_addr = base_addr;
 
   Elf_Ehdr *eh = (Elf_Ehdr *) elf_header;
   if (!strncmp(eh->e_ident, ELFMAG, SELFMAG)) {
@@ -138,7 +134,7 @@ struct Trustlet* parse_elf(char* name) {
     }
   }
   curr_segment->next = NULL;
-  map_segments(t_let->segments, fd);
+  map_segments(t_let->segments, fd, base_addr);
 
   close(fd);
   return t_let;

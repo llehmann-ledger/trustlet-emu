@@ -10,6 +10,9 @@
 // Arbitrary, could be anything code will still works
 #define BASE_ADDR_TRUSTLET     ((void *)0x00100000)
 
+// Arbitrary, could be anything code will still works
+#define BASE_ADDR_CMNLIB     ((void *)0x10000000)
+
 struct Dyn_section
 {
   size_t size;
@@ -48,7 +51,6 @@ struct Symbol
 
 struct Trustlet
 {
-  char *name;
   struct Segment *segments;
   size_t base_addr;
   struct Symbol *symbols;

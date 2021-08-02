@@ -2,8 +2,8 @@
 #include "elf_helper.h"
 #include <stdbool.h>
 
-void map_trustlet(struct Trustlet *t_let) {
-
+struct Trustlet * map_trustlet(char *path, size_t base_addr) {
+  struct Trustlet *t_let = parse_elf(path, base_addr);
   struct Segment *dyn_seg = t_let->segments;
   bool stop = false;
   // Find dynamic segment
@@ -17,10 +17,8 @@ void map_trustlet(struct Trustlet *t_let) {
   
   if (!dyn_seg) {
     printf("No dynamic segment. Stopping.\n");
-    return;
+    return t_let;
   }
-
-  size_t base_addr = BASE_ADDR_TRUSTLET;
 
   t_let->e_entry += base_addr;
   printf("\nDEBUG: dynamic parsing step:\n\n");
@@ -36,13 +34,13 @@ void map_trustlet(struct Trustlet *t_let) {
   parse_jmprel(t_let->symbols, res->dt_jmprel, base_addr);
 
   printf("\n~ THAT'S ALL FOLKS ~\n");
-
+  return t_let;
 }
 
 /*
 ** TODO
 */
-int map_cmnlib(const char* name) {
+int map_cmnlib(const char* path) {
 
 }
 
@@ -53,10 +51,10 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  struct Trustlet *t_let = parse_elf(argv[1]);
-  map_trustlet(t_let);
-
-  // TODO : map_cmnlib
+  struct Trustlet *t_let = map_trustlet(argv[1], BASE_ADDR_TRUSTLET);
+  // TODO : Get path from argv[2] ?
+  //        Support 32/64 bits
+  struct Trustlet *t_lib = map_trustlet("cmnlib", BASE_ADDR_CMNLIB);
 
   // Seek to entry point
   struct Segment *code_seg = t_let->segments;
