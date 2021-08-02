@@ -100,11 +100,14 @@ struct Trustlet* parse_elf(char* name) {
     exit(-1);
   }
 
+  printf("Entry point\t= 0x%08lx\n", eh->e_entry);
+  t_let->e_entry = eh->e_entry;
+
   t_let->segments = calloc(sizeof(struct Segment), 1);
   struct Segment *curr_segment = t_let->segments;  
   Elf_Phdr *e_phdr = (Elf_Phdr* )(elf_header + eh->e_phoff);
-  
-  t_let->segments->offset_mem = e_phdr[0].p_vaddr; // Physical address needed ?
+  // Use physical address, is virtual address needed ?
+  t_let->segments->offset_mem = e_phdr[0].p_paddr;
   printf("Offset mem : 0x%x\n", t_let->segments->offset_mem);
   t_let->segments->offset_file = e_phdr[0].p_offset;
   printf("Offset file : 0x%x\n", t_let->segments->offset_file);
@@ -117,7 +120,8 @@ struct Trustlet* parse_elf(char* name) {
 
   for (int i = 1; i < eh->e_phnum; i++) {
     struct Segment *temp = calloc(sizeof(struct Segment), 1);
-    temp->offset_mem = e_phdr[i].p_vaddr; // Physical address needed ?
+    // Use physical address, is virtual address needed ?
+    temp->offset_mem = e_phdr[i].p_paddr;
     printf("Offset mem : 0x%x\n", temp->offset_mem);
     temp->offset_file = e_phdr[i].p_offset;
     printf("Offset file : 0x%x\n", temp->offset_file);

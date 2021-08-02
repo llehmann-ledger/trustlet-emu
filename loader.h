@@ -10,10 +10,6 @@
 // Arbitrary, could be anything code will still works
 #define BASE_ADDR_TRUSTLET     ((void *)0x00100000)
 
-// The only remaining thing hardcoded :(
-// Because CElf_invoke() is not part of the ELF symbols...
-#define ENTRY_POINT 0x1954
-
 struct Dyn_section
 {
   size_t size;
@@ -37,7 +33,7 @@ struct Segment
   int type;
   int perm;
   size_t offset_file;
-  size_t offset_mem; // Useful ?
+  size_t offset_mem;
   struct Segment *next;
 };
 
@@ -56,6 +52,7 @@ struct Trustlet
   struct Segment *segments;
   size_t base_addr;
   struct Symbol *symbols;
+  size_t e_entry;
 };
 
 #endif /* loader.h */

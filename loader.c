@@ -2,7 +2,7 @@
 #include "elf_helper.h"
 #include <stdbool.h>
 
-int map_trustlet(struct Trustlet *t_let) {
+void map_trustlet(struct Trustlet *t_let) {
 
   struct Segment *dyn_seg = t_let->segments;
   bool stop = false;
@@ -15,13 +15,14 @@ int map_trustlet(struct Trustlet *t_let) {
     }
   }
   
-  if (dyn_seg == NULL) {
+  if (!dyn_seg) {
     printf("No dynamic segment. Stopping.\n");
-    exit(-1);
+    return;
   }
 
   size_t base_addr = BASE_ADDR_TRUSTLET;
 
+  t_let->e_entry += base_addr;
   printf("\nDEBUG: dynamic parsing step:\n\n");
   struct Dyn_parser_helper *res = parse_dynamic(dyn_seg->mem, base_addr);
   
@@ -51,9 +52,8 @@ int main(int argc, char *argv[]) {
     printf("usage: trustlet_path\n");
     return 0;
   }
-  // TODO : Get name from argv
+
   struct Trustlet *t_let = parse_elf(argv[1]);
-  // TODO : Get name fromconst char* name, void* t_code, void* t_data argv
   map_trustlet(t_let);
 
   // TODO : map_cmnlib
@@ -75,10 +75,12 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  struct Symbol *entry_point = find_symbol_from_name(t_let->symbols, "CElfFile_invoke");
-  if (!entry_point) {
-    printf("Entry point not found\n");
-    return -1;    
+  Elf_Addr entry_point = 0;
+  struct Symbol *celf_invoke = find_symbol_from_name(t_let->symbols, "CElfFile_invoke");
+  if (!celf_invoke) {
+    entry_point = t_let->e_entry;
+  } else {
+    entry_point = celf_invoke->real_addr;
   }
 
   asm volatile(
@@ -86,7 +88,7 @@ int main(int argc, char *argv[]) {
                "blx  %1\n"
                "bkpt\n"
                :
-               : "r"(code_seg->mem), "r"(entry_point->real_addr)
+               : "r"(code_seg->mem), "r"(entry_point)
                : "r9");
 
  return 0;
