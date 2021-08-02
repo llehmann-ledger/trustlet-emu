@@ -28,20 +28,13 @@ struct Trustlet * map_trustlet(char *path, size_t base_addr) {
   t_let->symbols = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
   
   printf("\nDEBUG: parsing DT_REL step:\n\n");
-  parse_rel(t_let->symbols, res->dt_rel, base_addr);
+  parse_rel(t_let, res->dt_rel, base_addr);
   
   printf("\nDEBUG: parsing DT_JMPREL step:\n\n");
   parse_jmprel(t_let->symbols, res->dt_jmprel, base_addr);
 
   printf("\n~ THAT'S ALL FOLKS ~\n");
   return t_let;
-}
-
-/*
-** TODO
-*/
-int map_cmnlib(const char* path) {
-
 }
 
 int main(int argc, char *argv[]) {

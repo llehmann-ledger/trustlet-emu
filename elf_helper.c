@@ -1,5 +1,6 @@
 #include "elf_helper.h"
 #include <string.h>
+#include <stdbool.h>
 
 void map_segments(struct Segment *segment_list, int fd, size_t base_addr) {
   struct Segment *curr = segment_list;
@@ -326,7 +327,19 @@ struct Symbol* find_symbol_from_index(struct Symbol *sym_list, int index, size_t
   }
 }
 
-void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, size_t base_addr) {
+bool is_mmaped(struct Trustlet *t_let, size_t addr, size_t base_addr) {
+  struct Segment *seg = t_let->segments;
+  while (seg)
+  {
+    if (addr >= seg->offset_mem && addr <= seg->offset_mem + seg->size)
+     return true; 
+    seg = seg->next;
+  }
+  return false;
+}
+
+void parse_rel(struct Trustlet *t_let, struct Dyn_section *dt_rel, size_t base_addr) {
+  struct Symbol *sym_list = t_let->symbols;
   Elf_Rel *curr = (Elf_Rel *) dt_rel->mem;
 
   while (curr < dt_rel->mem + dt_rel->size) {
@@ -340,16 +353,17 @@ void parse_rel(struct Symbol *sym_list, struct Dyn_section *dt_rel, size_t base_
         symbol_reloc->got_addr = addr_reloc;
         *addr_reloc += base_addr;
       } else {
-        printf("/!\\ Symbol not found at : %p, which came from : %p\n", *addr_reloc, addr_reloc);
-        //FIXME : Needs to add a is_mmaped(addr)
-        //
-        //        if is_mmaped(addr) is TRUE
-        //           Addr += Base Addr
-        //   
-        //        else if addr is (nil)
-        //           Stays (nil) ?  
-        //        else
-        //           ERR SHOULD NOT HAPPENS
+        // Do these symbols need relocation ?
+        // If so what to do with *addr_reloc == 0 ?
+        // Relocate it for now
+        if (is_mmaped(t_let, *addr_reloc, base_addr)) {
+          printf("Unknown symbol found at : %p (valid memory address), which came from : %p\n", *addr_reloc, addr_reloc);
+          *addr_reloc += base_addr;
+        } else {
+          // Should not happen
+          printf("/!\\ Unknown symbol found at : %p, which came from : %p\n", *addr_reloc, addr_reloc);
+
+        }
       }
     } else {
       struct Symbol *symbol_reloc = find_symbol_from_index(sym_list, ELF_R_SYM(curr->r_info), base_addr);
