@@ -49,6 +49,8 @@ int main(int argc, char *argv[]) {
   //        Support 32/64 bits
   struct Trustlet *t_lib = map_trustlet("cmnlib", BASE_ADDR_CMNLIB);
 
+  link_symbols(t_let->symbols, t_lib->symbols);
+
   // Seek to entry point
   struct Segment *code_seg = t_let->segments;
   bool stop = false;

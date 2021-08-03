@@ -35,6 +35,7 @@ void parse_rel(struct Trustlet *t_let, struct Dyn_section *dt_rel, size_t base_a
 void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, size_t base_addr);
 struct Trustlet* parse_elf(char* path, size_t base_addr);
 struct Symbol* find_symbol_from_name(struct Symbol *sym_list, const char* name);
+void link_symbols(struct Symbol *s_trustlet, struct Symbol *s_cmnlib);
 
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;

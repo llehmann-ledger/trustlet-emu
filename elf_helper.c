@@ -327,6 +327,29 @@ struct Symbol* find_symbol_from_index(struct Symbol *sym_list, int index, size_t
   }
 }
 
+void link_symbols(struct Symbol *s_trustlet, struct Symbol *s_cmnlib) {
+  while(s_trustlet) {
+    if (s_trustlet->flags == 1 || s_trustlet->real_addr == 0) {
+      if (s_trustlet->flags == 1 && s_trustlet->real_addr == 0) {
+        struct Symbol *res = find_symbol_from_name(s_cmnlib, s_trustlet->name);
+        if (!res) {
+          printf("/!\\ We did not find the symbol %s in cmnlib\n", s_trustlet->name);
+        } else {
+          if (s_trustlet->got_addr == 0) {
+            printf("/!\\ The symbol %s has a null GOT address,  this should not happen\n", s_trustlet->name);
+          } else {
+            *((Elf_Addr *)(s_trustlet->got_addr)) = (Elf_Addr)(res->real_addr);
+            printf("Resolved symbol %s, new address : %p, from %p\n", s_trustlet->name, *((Elf_Addr *)(s_trustlet->got_addr)), res->real_addr);
+          }
+        }
+      } else {
+        printf("/!\\ We got symbol %s which is external, but already have an address fillled, this should not happen\n", s_trustlet->name);
+      }
+    }
+    s_trustlet = s_trustlet->next;
+  }
+}
+
 bool is_mmaped(struct Trustlet *t_let, size_t addr, size_t base_addr) {
   struct Segment *seg = t_let->segments;
   while (seg)
