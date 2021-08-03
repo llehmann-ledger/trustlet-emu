@@ -13,6 +13,9 @@
 // Arbitrary, could be anything code will still works
 #define BASE_ADDR_CMNLIB     ((void *)0x10000000)
 
+// Arbitrary, could be anything code will still works
+#define HEAP_ADDR     ((void *)0x20000000)
+
 struct Dyn_section
 {
   size_t size;

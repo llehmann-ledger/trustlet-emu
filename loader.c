@@ -76,6 +76,34 @@ int main(int argc, char *argv[]) {
     entry_point = celf_invoke->real_addr;
   }
 
+  // Allocate heap
+  // What is a good value for heap_size ?
+  size_t t_heap_size = 0x10000;
+  void *t_heap = mmap(HEAP_ADDR, t_heap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+  if (t_heap == MAP_FAILED) {
+    perror("Error in mmap stack");
+    exit(-1);
+  }
+  struct Symbol *app_heap_base = find_symbol_from_name(t_let->symbols, "app_heap_base");
+  struct Symbol *app_heap_limit = find_symbol_from_name(t_let->symbols, "app_heap_limit");
+
+  *((Elf_Addr *)(app_heap_base->got_addr)) = (Elf_Addr)(t_heap);
+  app_heap_base->real_addr = t_heap;
+  *((Elf_Addr *)(app_heap_limit->got_addr)) = (Elf_Addr)(t_heap + t_heap_size);
+  app_heap_limit->real_addr = t_heap + t_heap_size;
+
+  register void *sp asm ("sp");
+  // What value to use as stack size ?
+  size_t t_stack_size = 0x10000;
+
+  struct Symbol *app_stack_base = find_symbol_from_name(t_let->symbols, "app_stack_base");
+  struct Symbol *app_stack_limit = find_symbol_from_name(t_let->symbols, "app_stack_limit");
+
+  *((Elf_Addr *)(app_stack_base->got_addr)) = (Elf_Addr)(sp);
+  app_stack_base->real_addr = sp;
+  *((Elf_Addr *)(app_stack_limit->got_addr)) = (Elf_Addr)(sp + t_stack_size);
+  app_stack_limit->real_addr = sp + t_stack_size;
+
   asm volatile(
                "mov r9, %0\n"
                "blx  %1\n"
@@ -84,6 +112,5 @@ int main(int argc, char *argv[]) {
                : "r"(code_seg->mem), "r"(entry_point)
                : "r9");
 
- return 0;
-
+  return 0;
 }    
