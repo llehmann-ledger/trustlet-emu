@@ -1,6 +1,6 @@
-#include "elf_helper.h"
 #include <string.h>
 #include <stdbool.h>
+#include "elf_helper.h"
 
 void map_segments(struct Segment *segment_list, int fd, size_t base_addr) {
   struct Segment *curr = segment_list;
@@ -129,7 +129,7 @@ struct Trustlet* parse_elf(char* path, size_t base_addr) {
     temp->perm =  e_phdr[i].p_flags;
     printf("Flags (perm) : %d\n", temp->perm);
 
-    if (temp->type != PT_NULL) {
+    if (temp->type == PT_DYNAMIC || temp->type == PT_LOAD ) {
       curr_segment->next = temp;
       curr_segment = temp;
     }

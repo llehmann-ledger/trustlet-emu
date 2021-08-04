@@ -1,6 +1,7 @@
+#include <stdbool.h>
 #include "loader.h"
 #include "elf_helper.h"
-#include <stdbool.h>
+#include "hook_functions.h"
 
 struct Trustlet * map_trustlet(char *path, size_t base_addr) {
   struct Trustlet *t_let = parse_elf(path, base_addr);
@@ -49,6 +50,10 @@ int main(int argc, char *argv[]) {
   //        Support 32/64 bits
   struct Trustlet *t_lib = map_trustlet("cmnlib", BASE_ADDR_CMNLIB);
 
+  // Hook some functions that we are interested in
+  hook_functions(t_lib->symbols);
+
+  // Dynamic link of symbols
   link_symbols(t_let->symbols, t_lib->symbols);
 
   // Seek to entry point
@@ -109,7 +114,7 @@ int main(int argc, char *argv[]) {
                "blx  %1\n"
                "bkpt\n"
                :
-               : "r"(code_seg->mem), "r"(entry_point)
+               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169)
                : "r9");
 
   return 0;
