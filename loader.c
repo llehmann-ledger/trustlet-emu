@@ -51,9 +51,11 @@ int main(int argc, char *argv[]) {
   struct Trustlet *t_lib = map_trustlet("cmnlib", BASE_ADDR_CMNLIB);
 
   // Hook some functions that we are interested in
+  printf("\nHook functions: \n");
   hook_functions(t_lib->symbols);
 
   // Dynamic link of symbols
+  printf("\nLink symbols: \n");
   link_symbols(t_let->symbols, t_lib->symbols);
 
   // Seek to entry point
@@ -109,6 +111,7 @@ int main(int argc, char *argv[]) {
   *((Elf_Addr *)(app_stack_limit->got_addr)) = (Elf_Addr)(sp + t_stack_size);
   app_stack_limit->real_addr = sp + t_stack_size;
 
+  printf("\n[+] Start trustlet execution\n\n");
   asm volatile(
                "mov r9, %0\n"
                "blx  %1\n"
