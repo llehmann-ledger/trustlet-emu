@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdio.h>
 #include "loader.h"
 #include "elf_helper.h"
 #include "hook_functions.h"
@@ -117,7 +118,9 @@ int main(int argc, char *argv[]) {
                "blx  %1\n"
                "bkpt\n"
                :
-               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169)
+//               : "r"(code_seg->mem), "r"(BASE_ADDR_CMNLIB + 0x391d) // To test qsee_log from cmnlib
+               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169) // To test qsee_log from htc_drmprov trustlet
+//               : "r"(code_seg->mem), "r"(entry_point)
                : "r9");
 
   return 0;

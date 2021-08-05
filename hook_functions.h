@@ -11,6 +11,6 @@ typedef struct {
 void hook_functions(struct Symbol *s_cmnlib);
 bool need_hook(char *name, void (**f_pointer)(void));
 
-int qsee_log(int msg_level, const char *msg, ...);
+int qsee_log(int msg_level, const char *msg, ...)  __attribute__ ((target ("thumb")));
 
 #endif /* hook_functions.h */
