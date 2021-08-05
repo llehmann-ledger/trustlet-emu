@@ -112,14 +112,20 @@ int main(int argc, char *argv[]) {
   *((Elf_Addr *)(app_stack_limit->got_addr)) = (Elf_Addr)(sp + t_stack_size);
   app_stack_limit->real_addr = sp + t_stack_size;
 
+// Debug : To test qsee_log from cmnlib
+//  *((char *)(BASE_ADDR_CMNLIB + 0x398E)) = 0x0D;
+//  *((char *)(BASE_ADDR_CMNLIB + 0x398E + 1)) = 0xF0;
+//  *((char *)(BASE_ADDR_CMNLIB + 0x398E + 2)) = 0x27;
+//  *((char *)(BASE_ADDR_CMNLIB + 0x398E + 3)) = 0xFB;
+
   printf("\n[+] Start trustlet execution\n\n");
   asm volatile(
                "mov r9, %0\n"
                "blx  %1\n"
                "bkpt\n"
                :
-//               : "r"(code_seg->mem), "r"(BASE_ADDR_CMNLIB + 0x391d) // To test qsee_log from cmnlib
-               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169) // To test qsee_log from htc_drmprov trustlet
+//               : "r"(code_seg->mem), "r"(BASE_ADDR_CMNLIB + 0x391d) // Debug : To test qsee_log from cmnlib
+               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169) // Debug : To test qsee_log from htc_drmprov trustlet
 //               : "r"(code_seg->mem), "r"(entry_point)
                : "r9");
 
