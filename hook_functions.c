@@ -17,16 +17,16 @@ bool need_hook(char *name, void (**f_pointer)(void)) {
   }  
   return false;
 }
-void hook_functions(struct Symbol *s_cmnlib) {
-  while(s_cmnlib) {
+void hook_functions(struct Symbol *s_trustlet) {
+  while(s_trustlet) {
     void (*f_pointer)(void) = NULL;
-    if (need_hook(s_cmnlib->name, &f_pointer)) {
-      printf("Hooked function %s\n", s_cmnlib->name);
-      s_cmnlib->real_addr = f_pointer;
-      if (s_cmnlib->got_addr != NULL)
-        *(Elf_Addr *)(s_cmnlib->got_addr) = (Elf_Addr)(f_pointer);
+    if (need_hook(s_trustlet->name, &f_pointer)) {
+      printf("Hooked function %s\n", s_trustlet->name);
+      s_trustlet->real_addr = f_pointer;
+      if (s_trustlet->got_addr != NULL)
+        *(Elf_Addr *)(s_trustlet->got_addr) = (Elf_Addr)(f_pointer);
     }
-    s_cmnlib = s_cmnlib->next;
+    s_trustlet = s_trustlet->next;
   }
 }
 
