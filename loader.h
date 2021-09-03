@@ -16,6 +16,11 @@
 // Arbitrary, could be anything code will still works
 #define HEAP_ADDR     ((void *)0x20000000)
 
+#define ERR_MSG -1
+#define INFO_MSG 1
+#define DEBUG_MSG 2
+void log_message(int level, char *message, ...);
+
 struct Dyn_section
 {
   size_t size;

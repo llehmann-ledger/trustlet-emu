@@ -1,10 +1,14 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <getopt.h>
+#include <stdarg.h>
 #include "loader.h"
 #include "elf_helper.h"
 #include "hook_functions.h"
 
-struct Trustlet * map_trustlet(char *path, size_t base_addr) {
+bool VERBOSE = false;
+
+struct Trustlet * map_trustlet(const char *path, size_t base_addr) {
   struct Trustlet *t_let = parse_elf(path, base_addr);
   struct Segment *dyn_seg = t_let->segments;
   bool stop = false;
@@ -18,45 +22,97 @@ struct Trustlet * map_trustlet(char *path, size_t base_addr) {
   }
   
   if (!dyn_seg) {
-    printf("No dynamic segment. Stopping.\n");
+    log_message(DEBUG_MSG, "No dynamic segment. Stopping.\n");
     return t_let;
   }
 
   t_let->e_entry += base_addr;
-  printf("\nDEBUG: dynamic parsing step:\n\n");
+  log_message(DEBUG_MSG, "Dynamic parsing step:\n\n");
   struct Dyn_parser_helper *res = parse_dynamic(dyn_seg->mem, base_addr);
   
-  printf("\nDEBUG: symbols parsing step:\n\n");
+  log_message(DEBUG_MSG, "Symbols parsing step:\n\n");
   t_let->symbols = parse_symbols(res->dt_symtab, res->dt_strtab, base_addr);
   
-  printf("\nDEBUG: parsing DT_REL step:\n\n");
+  log_message(DEBUG_MSG, "Parsing DT_REL step:\n\n");
   parse_rel(t_let, res->dt_rel, base_addr);
   
-  printf("\nDEBUG: parsing DT_JMPREL step:\n\n");
+  log_message(DEBUG_MSG, "Parsing DT_JMPREL step:\n\n");
   parse_jmprel(t_let->symbols, res->dt_jmprel, base_addr);
 
-  printf("\n~ THAT'S ALL FOLKS ~\n");
+  log_message(INFO_MSG, "Done.\n");
   return t_let;
 }
 
+void log_message(int level, char *message, ...) {
+  va_list myargs;
+  va_start(myargs, message);
+  switch (level)
+  {
+    case ERR_MSG:
+    case INFO_MSG:
+      vprintf(message, myargs);
+      break;
+    case DEBUG_MSG:
+      if (VERBOSE)
+        vprintf(message, myargs);
+      break;
+    default:
+      break;
+  }
+  va_end(myargs);  
+    int ret;
+}
+
+void print_help() {
+  log_message(INFO_MSG, "Usage: trustlet-emu -t TRUSTLET_PATH -c CMNLIB_PATH [OPTION]\n\n");
+  log_message(INFO_MSG, "Valid OPTION are:\n");
+  log_message(INFO_MSG, "  -v\t\t Verbose output.\n");
+  log_message(INFO_MSG, "  -h\t\t Print this help message.\n");
+  exit(-1);
+}
 int main(int argc, char *argv[]) {
 
-  if (argc < 2) {
-    printf("usage: trustlet_path\n");
-    return 0;
+  int opt = 0;
+  const char *trustlet_path = NULL;
+  const char *cmnlib_path = NULL;
+
+  while ((opt = getopt(argc, argv, "t:c:vh")) != -1) {
+    switch(opt) {
+      case 't':
+        trustlet_path = optarg;
+        break;
+      case 'c':
+        cmnlib_path = optarg;
+        break;
+      case 'v':
+        VERBOSE = true;
+        break;
+      case 'h':
+        print_help();
+        break;
+      case '?':
+        print_help();
+       break;
+    }
   }
 
-  struct Trustlet *t_let = map_trustlet(argv[1], BASE_ADDR_TRUSTLET);
-  // TODO : Get path from argv[2] ?
-  //        Support 32/64 bits
-  struct Trustlet *t_lib = map_trustlet("cmnlib", BASE_ADDR_CMNLIB);
+  if (!trustlet_path || !cmnlib_path)
+    print_help();
+
+  // TODO: Support 32/64 bits
+  log_message(INFO_MSG, "\n[+] Load trustlet in memory\n\n");
+  struct Trustlet *t_let = map_trustlet(trustlet_path, BASE_ADDR_TRUSTLET);
+  log_message(INFO_MSG, "\n[+] Load cmnlib in memory\n\n");
+  struct Trustlet *t_lib = map_trustlet(cmnlib_path, BASE_ADDR_CMNLIB);
 
   // Hook some functions that we are interested in
-  printf("\nHook functions: \n");
+  // TODO : Support 32/64 bits
+  // MAYBE : Get functions names to hook from arguments ?
+  log_message(INFO_MSG, "\n[+] Hook functions\n\n");
   hook_functions(t_lib->symbols);
 
   // Dynamic link of symbols
-  printf("\nLink symbols: \n");
+  log_message(INFO_MSG, "\n[+] Link symbols dynamically\n\n");
   link_symbols(t_let->symbols, t_lib->symbols);
 
   // Seek to entry point
@@ -72,7 +128,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (!code_seg) {
-    printf("No code segment. Stopping.\n");
+    log_message(ERR_MSG, "No code segment. Stopping.\n");
     return -1;
   }
 
@@ -100,9 +156,10 @@ int main(int argc, char *argv[]) {
   *((Elf_Addr *)(app_heap_limit->got_addr)) = (Elf_Addr)(t_heap + t_heap_size);
   app_heap_limit->real_addr = t_heap + t_heap_size;
 
-  register void *sp asm ("sp");
+  // Allocate stack
   // What value to use as stack size ?
   size_t t_stack_size = 0x10000;
+  register void *sp asm ("sp");
 
   struct Symbol *app_stack_base = find_symbol_from_name(t_let->symbols, "app_stack_base");
   struct Symbol *app_stack_limit = find_symbol_from_name(t_let->symbols, "app_stack_limit");
@@ -112,20 +169,15 @@ int main(int argc, char *argv[]) {
   *((Elf_Addr *)(app_stack_limit->got_addr)) = (Elf_Addr)(sp + t_stack_size);
   app_stack_limit->real_addr = sp + t_stack_size;
 
-// Debug : To test qsee_log from cmnlib
-//  *((char *)(BASE_ADDR_CMNLIB + 0x398E)) = 0x0D;
-//  *((char *)(BASE_ADDR_CMNLIB + 0x398E + 1)) = 0xF0;
-//  *((char *)(BASE_ADDR_CMNLIB + 0x398E + 2)) = 0x27;
-//  *((char *)(BASE_ADDR_CMNLIB + 0x398E + 3)) = 0xFB;
-
-  printf("\n[+] Start trustlet execution\n\n");
+  log_message(INFO_MSG, "\n[+] Start trustlet execution\n\n");
+  // TODO : Support 32/64 bits
   asm volatile(
                "mov r9, %0\n"
                "blx  %1\n"
                "bkpt\n"
                :
-//               : "r"(code_seg->mem), "r"(BASE_ADDR_CMNLIB + 0x391d) // Debug : To test qsee_log from cmnlib
-               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169) // Debug : To test qsee_log from htc_drmprov trustlet
+              : "r"(code_seg->mem), "r"(BASE_ADDR_CMNLIB + 0x391d) // Debug : To test qsee_log from cmnlib
+//               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169) // Debug : To test qsee_log from htc_drmprov trustlet
 //               : "r"(code_seg->mem), "r"(entry_point)
                : "r9");
 

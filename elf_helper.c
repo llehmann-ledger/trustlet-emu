@@ -29,13 +29,13 @@ void map_segments(struct Segment *segment_list, int fd, size_t base_addr) {
       exit(-1);
     }
 
-    if (curr->perm & PF_X) {
-      int mprotect_result = mprotect(curr->mem, curr->size, prot & ~PROT_EXEC);
-      if (mprotect_result == -1) {
-        perror("Error mprotect segment");
-        exit(-1);
-      }
-    }
+//    if (curr->perm & PF_X) {
+//      int mprotect_result = mprotect(curr->mem, curr->size, prot & ~PROT_WRITE);
+//      if (mprotect_result == -1) {
+//        perror("Error mprotect segment");
+//        exit(-1);
+//      }
+//    }
     curr = curr->next;
   }
 }
@@ -67,37 +67,37 @@ struct Trustlet* parse_elf(char* path, size_t base_addr) {
 
   Elf_Ehdr *eh = (Elf_Ehdr *) elf_header;
   if (!strncmp(eh->e_ident, ELFMAG, SELFMAG)) {
-    printf("File is a valid ELF !\n\n");
+    log_message(DEBUG_MSG, "File is a valid ELF !\n\n");
   } else {
-    printf("Invalid file : not an ELF file\n");
+    log_message(ERR_MSG, "Invalid file : not an ELF file\n");
     exit(-1);
   }
 	switch(eh->e_ident[EI_CLASS])
 	{
 		case ELFCLASS32:
 #ifdef BIT64_SUPPORT
-      printf("Trustlet-emu is compiled for 64 bit support only !\n");
+      log_message(ERR_MSG, "Trustlet-emu is compiled for 64 bit support only !\n");
       exit(-1);
 #endif
 			break;
 		case ELFCLASS64:
 #ifndef BIT64_SUPPORT
-      printf("Trustlet-emu is compiled for 32 bit support only !\n");
+      log_message(ERR_MSG, "Trustlet-emu is compiled for 32 bit support only !\n");
       exit(-1);
 #endif
 			break;
 		default:
-			printf("Invalid Class\n");
+			log_message(ERR_MSG, "Invalid Class\n");
       exit(-1);
 			break;
 	}
 
   if (eh->e_machine != EM_ARM) {
-    printf("Are you seriously trying to load an ELF not compiled for ARM ? GTFO\n");
+   log_message(ERR_MSG, "Not an ARM ELF file.\n");
     exit(-1);
   }
 
-  printf("Entry point\t= 0x%08lx\n", eh->e_entry);
+  log_message(DEBUG_MSG, "Entry point\t= 0x%08lx\n", eh->e_entry);
   t_let->e_entry = eh->e_entry;
 
   t_let->segments = calloc(sizeof(struct Segment), 1);
@@ -105,29 +105,29 @@ struct Trustlet* parse_elf(char* path, size_t base_addr) {
   Elf_Phdr *e_phdr = (Elf_Phdr* )(elf_header + eh->e_phoff);
   // Use physical address, is virtual address needed ?
   t_let->segments->offset_mem = e_phdr[0].p_paddr;
-  printf("Offset mem : 0x%x\n", t_let->segments->offset_mem);
+  log_message(DEBUG_MSG, "Offset mem : 0x%x\n", t_let->segments->offset_mem);
   t_let->segments->offset_file = e_phdr[0].p_offset;
-  printf("Offset file : 0x%x\n", t_let->segments->offset_file);
+  log_message(DEBUG_MSG, "Offset file : 0x%x\n", t_let->segments->offset_file);
   t_let->segments->size =  e_phdr[0].p_filesz;
-  printf("File size : 0x%x\n", t_let->segments->size);
+  log_message(DEBUG_MSG, "File size : 0x%x\n", t_let->segments->size);
   t_let->segments->type =  e_phdr[0].p_type;
-  printf("Type : %d\n", t_let->segments->type);
+  log_message(DEBUG_MSG, "Type : %d\n", t_let->segments->type);
   t_let->segments->perm =  e_phdr[0].p_flags;
-  printf("Flags (perm) : %d\n", t_let->segments->perm);
+  log_message(DEBUG_MSG, "Flags (perm) : %d\n", t_let->segments->perm);
 
   for (int i = 1; i < eh->e_phnum; i++) {
     struct Segment *temp = calloc(sizeof(struct Segment), 1);
     // Use physical address, is virtual address needed ?
     temp->offset_mem = e_phdr[i].p_paddr;
-    printf("Offset mem : 0x%x\n", temp->offset_mem);
+    log_message(DEBUG_MSG, "Offset mem : 0x%x\n", temp->offset_mem);
     temp->offset_file = e_phdr[i].p_offset;
-    printf("Offset file : 0x%x\n", temp->offset_file);
+    log_message(DEBUG_MSG, "Offset file : 0x%x\n", temp->offset_file);
     temp->size =  e_phdr[i].p_filesz;
-    printf("File size : 0x%x\n", temp->size);
+    log_message(DEBUG_MSG, "File size : 0x%x\n", temp->size);
     temp->type =  e_phdr[i].p_type;
-    printf("Type : %d\n", temp->type);
+    log_message(DEBUG_MSG, "Type : %d\n", temp->type);
     temp->perm =  e_phdr[i].p_flags;
-    printf("Flags (perm) : %d\n", temp->perm);
+    log_message(DEBUG_MSG, "Flags (perm) : %d\n", temp->perm);
 
     if (temp->type == PT_DYNAMIC || temp->type == PT_LOAD ) {
       curr_segment->next = temp;
@@ -162,15 +162,15 @@ struct Dyn_parser_helper* parse_dynamic(void* mem, size_t base_addr) {
     {
     case DT_PLTGOT:
       dyn_p->dt_pltgot->mem = curr->d_val + base_addr;
-      printf("DT_PLTGOT: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_pltgot->mem);
+      log_message(DEBUG_MSG, "DT_PLTGOT: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_pltgot->mem);
       break;
 
     case DT_HASH:
       dyn_p->dt_hash->mem = curr->d_val + base_addr;
-      printf("DT_HASH: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_hash->mem);
+      log_message(DEBUG_MSG, "DT_HASH: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_hash->mem);
       // The second Elf_Word in DT_HASH holds the number of entry in DT_SYMTAB
       Elf_Sword nbentry_symtab = *((Elf_Sword*)(dyn_p->dt_hash->mem) + 1);
-      printf("Number of entry in DT_SYMTAB: %d\n", nbentry_symtab);
+      log_message(DEBUG_MSG, "Number of entry in DT_SYMTAB: %d\n", nbentry_symtab);
       if (dyn_p->dt_symtab->size == 0) {
         // We did not yet reached DT_SYMENT which holds the size of one entry
         dyn_p->dt_symtab->size = nbentry_symtab;
@@ -178,13 +178,13 @@ struct Dyn_parser_helper* parse_dynamic(void* mem, size_t base_addr) {
         // We already reached DT_SYMENT which holds the size of one entry
         // Let's multiply it with the number of entry
         dyn_p->dt_symtab->size *= nbentry_symtab;
-        printf("DT_SYMTAB total size: 0x%2x\n", dyn_p->dt_symtab->size);
+        log_message(DEBUG_MSG, "DT_SYMTAB total size: 0x%2x\n", dyn_p->dt_symtab->size);
       }
       break;
 
     case DT_SYMENT:
       // The d_val of DT_SYMENT holds the size of one entry in DT_SYMTAB
-      printf("Entry size of DT_SYMTAB: %d\n", curr->d_val);
+      log_message(DEBUG_MSG, "Entry size of DT_SYMTAB: %d\n", curr->d_val);
       if (dyn_p->dt_symtab->size == 0) {
         // We did not yet reached DT_HASH which holds the number of entry
         dyn_p->dt_symtab->size = curr->d_val;
@@ -192,43 +192,43 @@ struct Dyn_parser_helper* parse_dynamic(void* mem, size_t base_addr) {
         // We already reached DT_HASH which holds the number of entry
         // Let's multiply it with the number of entry
         dyn_p->dt_symtab->size *= curr->d_val;
-        printf("DT_SYMTAB total size: 0x%2x\n", dyn_p->dt_symtab->size);
+        log_message(DEBUG_MSG, "DT_SYMTAB total size: 0x%2x\n", dyn_p->dt_symtab->size);
       }
       break;
 
     case DT_RELSZ:
       dyn_p->dt_rel->size = curr->d_val;
-      printf("DT_REL size is: 0x%2x\n", curr->d_val);
+      log_message(DEBUG_MSG, "DT_REL size is: 0x%2x\n", curr->d_val);
       break;
 
     case DT_PLTRELSZ:
       dyn_p->dt_jmprel->size = curr->d_val;
-      printf("DT_JMPREL size is: 0x%2x\n", curr->d_val);
+      log_message(DEBUG_MSG, "DT_JMPREL size is: 0x%2x\n", curr->d_val);
       break;
 
     case DT_STRSZ:
       dyn_p->dt_strtab->size = curr->d_val;
-      printf("DT_STRTAB size is: 0x%2x\n", curr->d_val);
+      log_message(DEBUG_MSG, "DT_STRTAB size is: 0x%2x\n", curr->d_val);
       break;
     
     case DT_SYMTAB:
       dyn_p->dt_symtab->mem = curr->d_val + base_addr;
-      printf("DT_SYMTAB: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_symtab->mem);
+      log_message(DEBUG_MSG, "DT_SYMTAB: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_symtab->mem);
       break;
       
     case DT_JMPREL:
       dyn_p->dt_jmprel->mem = curr->d_val + base_addr;
-      printf("DT_JMPREL: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_jmprel->mem);
+      log_message(DEBUG_MSG, "DT_JMPREL: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_jmprel->mem);
       break;
 
     case DT_REL:
       dyn_p->dt_rel->mem = curr->d_val + base_addr;
-      printf("DT_REL: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_rel->mem);
+      log_message(DEBUG_MSG, "DT_REL: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_rel->mem);
       break;
 
     case DT_STRTAB:
       dyn_p->dt_strtab->mem = curr->d_val + base_addr;
-      printf("DT_STRTAB: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_strtab->mem);
+      log_message(DEBUG_MSG, "DT_STRTAB: addr %p, real_addr %p\n", curr->d_val, dyn_p->dt_strtab->mem);
       break;
 
     default:
@@ -247,7 +247,7 @@ struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *
 
   first->name = malloc(strlen(curr_elf->st_name + dt_strtab->mem));
   strcpy(first->name, curr_elf->st_name + dt_strtab->mem);
-  printf("name : %s\n", first->name);
+  log_message(DEBUG_MSG, "name : %s\n", first->name);
   first->real_addr = curr_elf->st_value;
   if (first->real_addr == NULL) {
     first->flags = 1;
@@ -255,9 +255,9 @@ struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *
     first->real_addr += base_addr;
     first->flags = 0;
   }
-  printf("got_addr : %p\n", first->got_addr);
-  printf("real_addr : %p\n", first->real_addr);
-  printf("external : %d\n\n",  first->flags );
+  log_message(DEBUG_MSG, "got_addr : %p\n", first->got_addr);
+  log_message(DEBUG_MSG, "real_addr : %p\n", first->real_addr);
+  log_message(DEBUG_MSG, "external : %d\n\n",  first->flags );
 
   curr_elf+=1;
 
@@ -265,7 +265,7 @@ struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *
     struct Symbol *temp = calloc(sizeof(struct Symbol), 1);
     temp->name = malloc(strlen(curr_elf->st_name + dt_strtab->mem));
     strcpy(temp->name, curr_elf->st_name + dt_strtab->mem);
-    printf("name : %s\n", temp->name);
+    log_message(DEBUG_MSG, "name : %s\n", temp->name);
     temp->real_addr = curr_elf->st_value;
     if (temp->real_addr == NULL) {
       temp->flags = 1;
@@ -273,9 +273,9 @@ struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *
       temp->real_addr += base_addr;
       temp->flags = 0;
     }
-    printf("got_addr : %p\n", temp->got_addr);
-    printf("real_addr : %p\n", temp->real_addr);
-    printf("external : %d\n\n",  temp->flags );
+    log_message(DEBUG_MSG, "got_addr : %p\n", temp->got_addr);
+    log_message(DEBUG_MSG, "real_addr : %p\n", temp->real_addr);
+    log_message(DEBUG_MSG, "external : %d\n\n",  temp->flags );
 
     curr_symbol->next = temp;
     curr_symbol = temp;
@@ -328,26 +328,29 @@ struct Symbol* find_symbol_from_index(struct Symbol *sym_list, int index, size_t
 }
 
 void link_symbols(struct Symbol *s_trustlet, struct Symbol *s_cmnlib) {
+  int cpt = 0;
   while(s_trustlet) {
     if (s_trustlet->flags == 1 || s_trustlet->real_addr == 0) {
       if (s_trustlet->flags == 1 && s_trustlet->real_addr == 0) {
         struct Symbol *res = find_symbol_from_name(s_cmnlib, s_trustlet->name);
         if (!res) {
-          printf("/!\\ We did not find the symbol %s in cmnlib\n", s_trustlet->name);
+          log_message(DEBUG_MSG, "/!\\ We did not find the symbol %s in cmnlib\n", s_trustlet->name);
         } else {
           if (s_trustlet->got_addr == 0) {
-            printf("/!\\ The symbol %s has a null GOT address,  this should not happen\n", s_trustlet->name);
+            log_message(DEBUG_MSG, "/!\\ The symbol %s has a null GOT address,  this should not happen\n", s_trustlet->name);
           } else {
             *((Elf_Addr *)(s_trustlet->got_addr)) = (Elf_Addr)(res->real_addr);
-            printf("Resolved symbol %s, new address : %p, from %p\n", s_trustlet->name, *((Elf_Addr *)(s_trustlet->got_addr)), res->real_addr);
+            log_message(DEBUG_MSG, "Resolved symbol %s, new address : %p, from %p\n", s_trustlet->name, *((Elf_Addr *)(s_trustlet->got_addr)), res->real_addr);
+            cpt++;
           }
         }
       } else {
-        printf("/!\\ We got symbol %s which is external, but already have an address fillled, this should not happen\n", s_trustlet->name);
+        log_message(DEBUG_MSG, "/!\\ We got symbol %s which is external, but already have an address fillled, this should not happen\n", s_trustlet->name);
       }
     }
     s_trustlet = s_trustlet->next;
   }
+  log_message(INFO_MSG, "Done. Successfully linked %d symbol(s).\n", cpt);
 }
 
 bool is_mmaped(struct Trustlet *t_let, size_t addr, size_t base_addr) {
@@ -371,8 +374,8 @@ void parse_rel(struct Trustlet *t_let, struct Dyn_section *dt_rel, size_t base_a
       struct Symbol *symbol_reloc = find_symbol_from_real_addr(sym_list, *addr_reloc, base_addr);
 
       if (symbol_reloc != NULL) {
-        printf("Symbol found : %s\n", symbol_reloc->name);
-        printf("Symbol GOT address : %p\n", addr_reloc);
+        log_message(DEBUG_MSG, "Symbol found : %s\n", symbol_reloc->name);
+        log_message(DEBUG_MSG, "Symbol GOT address : %p\n", addr_reloc);
         symbol_reloc->got_addr = addr_reloc;
         *addr_reloc += base_addr;
       } else {
@@ -380,18 +383,18 @@ void parse_rel(struct Trustlet *t_let, struct Dyn_section *dt_rel, size_t base_a
         // If so what to do with *addr_reloc == 0 ?
         // Relocate it for now
         if (is_mmaped(t_let, *addr_reloc, base_addr)) {
-          printf("Unknown symbol found at : %p (valid memory address), which came from : %p\n", *addr_reloc, addr_reloc);
+          log_message(DEBUG_MSG, "Unknown symbol found at : %p (valid memory address), which came from : %p\n", *addr_reloc, addr_reloc);
           *addr_reloc += base_addr;
         } else {
           // Should not happen
-          printf("/!\\ Unknown symbol found at : %p, which came from : %p\n", *addr_reloc, addr_reloc);
+          log_message(DEBUG_MSG, "/!\\ Unknown symbol found at : %p, which came from : %p\n", *addr_reloc, addr_reloc);
 
         }
       }
     } else {
       struct Symbol *symbol_reloc = find_symbol_from_index(sym_list, ELF_R_SYM(curr->r_info), base_addr);
-      printf("Symbol found : %s\n", symbol_reloc->name);
-      printf("Symbol GOT address : %p\n", addr_reloc);
+      log_message(DEBUG_MSG, "Symbol found : %s\n", symbol_reloc->name);
+      log_message(DEBUG_MSG, "Symbol GOT address : %p\n", addr_reloc);
       symbol_reloc->got_addr = addr_reloc;
       *addr_reloc += base_addr;
     }
@@ -405,11 +408,11 @@ void parse_jmprel(struct Symbol *sym_list, struct Dyn_section *dt_jmprel, size_t
     Elf_Addr *addr_reloc = curr->r_offset + base_addr;
     struct Symbol *symbol_reloc = find_symbol_from_index(sym_list, ELF_R_SYM(curr->r_info), base_addr);
     if (symbol_reloc != NULL) {
-      printf("Symbol found : %s\n", symbol_reloc->name);
-      printf("Symbol GOT address : %p\n", addr_reloc);
+      log_message(DEBUG_MSG, "Symbol found : %s\n", symbol_reloc->name);
+      log_message(DEBUG_MSG, "Symbol GOT address : %p\n", addr_reloc);
       symbol_reloc->got_addr = addr_reloc;
     } else {
-      printf("Error, we shouldn't get here, we're coming from : %p\n", addr_reloc);
+      log_message(DEBUG_MSG, "Error, we shouldn't get here, we're coming from : %p\n", addr_reloc);
     }
     curr+=1;
   }
