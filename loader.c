@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     print_help();
 
   // TODO: Support 32/64 bits
-  log_message(INFO_MSG, "\n[+] Load trustlet in memory\n\n");
+  log_message(INFO_MSG, "[+] Load trustlet in memory\n\n");
   struct Trustlet *t_let = map_trustlet(trustlet_path, BASE_ADDR_TRUSTLET);
   log_message(INFO_MSG, "\n[+] Load cmnlib in memory\n\n");
   struct Trustlet *t_lib = map_trustlet(cmnlib_path, BASE_ADDR_CMNLIB);
@@ -111,6 +111,10 @@ int main(int argc, char *argv[]) {
   log_message(INFO_MSG, "\n[+] Hook functions\n\n");
   hook_functions(t_lib->symbols);
 
+  // Lock write in code segment
+  lock_write(t_let->segments);
+  lock_write(t_lib->segments);
+
   // Dynamic link of symbols
   log_message(INFO_MSG, "\n[+] Link symbols dynamically\n\n");
   link_symbols(t_let->symbols, t_lib->symbols);
@@ -118,7 +122,8 @@ int main(int argc, char *argv[]) {
   // Seek to entry point
   struct Segment *code_seg = t_let->segments;
   bool stop = false;
-  // Find dynamic segment
+
+  // Find code segment
   while (code_seg && !stop) {
     if (code_seg->type == PT_LOAD && (code_seg->perm & (PF_X))) {
       stop = true;
@@ -176,9 +181,9 @@ int main(int argc, char *argv[]) {
                "blx  %1\n"
                "bkpt\n"
                :
-              : "r"(code_seg->mem), "r"(BASE_ADDR_CMNLIB + 0x391d) // Debug : To test qsee_log from cmnlib
+//              : "r"(code_seg->mem), "r"(BASE_ADDR_CMNLIB + 0x391d) // Debug : To test qsee_log from cmnlib
 //               : "r"(code_seg->mem), "r"(BASE_ADDR_TRUSTLET + 0x169) // Debug : To test qsee_log from htc_drmprov trustlet
-//               : "r"(code_seg->mem), "r"(entry_point)
+               : "r"(code_seg->mem), "r"(entry_point)
                : "r9");
 
   return 0;

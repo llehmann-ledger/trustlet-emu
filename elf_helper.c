@@ -2,6 +2,22 @@
 #include <stdbool.h>
 #include "elf_helper.h"
 
+void lock_write(struct Segment *segment_list) {
+  struct Segment *code_seg = segment_list;
+  bool stop = false;
+
+  while (code_seg && !stop) {
+    if (code_seg->type == PT_LOAD && (code_seg->perm & (PF_X))) {
+      int mprotect_result = mprotect(code_seg->mem, code_seg->size, PROT_READ | PROT_EXEC);
+      if (mprotect_result == -1) {
+        perror("Error mprotect segment");
+        exit(-1);
+      }
+      stop = true;
+    }
+    code_seg = code_seg->next;
+  }
+}
 void map_segments(struct Segment *segment_list, int fd, size_t base_addr) {
   struct Segment *curr = segment_list;
 
@@ -28,14 +44,6 @@ void map_segments(struct Segment *segment_list, int fd, size_t base_addr) {
       perror("Error read segment");
       exit(-1);
     }
-
-//    if (curr->perm & PF_X) {
-//      int mprotect_result = mprotect(curr->mem, curr->size, prot & ~PROT_WRITE);
-//      if (mprotect_result == -1) {
-//        perror("Error mprotect segment");
-//        exit(-1);
-//      }
-//    }
     curr = curr->next;
   }
 }

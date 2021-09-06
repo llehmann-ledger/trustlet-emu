@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include "loader.h"
 
+void lock_write(struct Segment *segment_list);
 struct Dyn_parser_helper* parse_dynamic(void* mem, size_t base_addr);
 struct Symbol* parse_symbols(struct Dyn_section *dt_symtab, struct Dyn_section *dt_strtab, size_t base_addr);
 void parse_rel(struct Trustlet *t_let, struct Dyn_section *dt_rel, size_t base_addr);
