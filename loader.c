@@ -105,6 +105,10 @@ int main(int argc, char *argv[]) {
   log_message(INFO_MSG, "\n[+] Load cmnlib in memory\n\n");
   struct Trustlet *t_lib = map_trustlet(cmnlib_path, BASE_ADDR_CMNLIB);
 
+  // TODO : Patch system calls
+  // TODO : Support 32/64 bits
+
+
   // Hook some functions that we are interested in
   // TODO : Support 32/64 bits
   // MAYBE : Get functions names to hook from arguments ?
